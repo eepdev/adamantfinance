@@ -10,11 +10,10 @@ contract StrategyDragonLair is BaseStrategyStakingRewards {
 
     string private pair_name;
 
-    // Token addresses for MATIC
+    // Addresses for MATIC
     address public quick = 0x831753DD7087CaC61aB5644b308642cc1c33Dc13;
-
-    //The Quick staking address and the dQuick token contract
-    address public dragonLair = 0xf28164A485B0B2C90639E47b0f377b4a438a16B1;
+    address public dragonLair = 0xf28164A485B0B2C90639E47b0f377b4a438a16B1; //The Quick staking address and the dQuick token contract
+    address public quickswapRouter = 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff; //Quickswap router
     
     uint256 public constant keepMax = 10000;
 
@@ -29,7 +28,8 @@ contract StrategyDragonLair is BaseStrategyStakingRewards {
             _rewards,
             _want,
             _strategist,
-            dragonLair
+            dragonLair,
+            quickswapRouter
         )
     {
         pair_name = _pair_name;

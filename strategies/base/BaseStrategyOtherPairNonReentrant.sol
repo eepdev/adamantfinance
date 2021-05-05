@@ -6,13 +6,12 @@ import "../../interfaces/IERCFund.sol";
 import "../../interfaces/IGenericVault.sol";
 
 //For A/B token pairs, where I have to convert the harvested token to A (ETH/MATIC/USDC/etc) and then sell 1/2 of A for B
-abstract contract BaseStrategyOtherPair is BaseStrategyStakingRewards {
+//For pools where the reward contract functions have the "nonReentrant" modifier
+//Creating a separate contract results in a lot of duplicate code, but not having to check an extra bool each harvest saves gas
+abstract contract BaseStrategyOtherPairNonReentrant is BaseStrategyStakingRewards {
 
-    // Addresses for MATIC
-    //address public quick = 0x831753DD7087CaC61aB5644b308642cc1c33Dc13;
     address public tokenA;
     address public tokenB;
-    //address public quickswapRouter = 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff; //Quickswap router
     
     uint256 public constant keepMax = 10000;
 
@@ -51,12 +50,15 @@ abstract contract BaseStrategyOtherPair is BaseStrategyStakingRewards {
     }
 
     // **** State Mutations ****
+    
+    function getReward() external {
+        _getReward();
+    }
 
+    //getReward() needs to be called manually beforehand because deposit() and getReward() have the nonReentrant modifier, so I cannot claim and deposit in the same tx
     function harvest() public override {
         //prevent unauthorized smart contracts from calling harvest()
         require(msg.sender == tx.origin || msg.sender == owner() || msg.sender == strategist, "not authorized");
-        
-        _getReward();
 
         uint256 _harvested_balance = IERC20(harvestedToken).balanceOf(address(this));
 

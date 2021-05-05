@@ -36,7 +36,7 @@ abstract contract VaultBase is Ownable {
     // The total # of shares issued
     uint256 public totalShares;
     // Withdrawing before this much time has passed will have a withdrawal penalty
-    uint256 public withdrawPenaltyTime = 3 days;
+    uint256 public withdrawPenaltyTime = 0; //Disabled withdrawal penalty for now
     // Withdrawal penalty, 100 = 1%
     uint256 public withdrawPenalty = 50;
     // Certain vaults will give up to 10x ADDY rewards

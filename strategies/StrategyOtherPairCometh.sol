@@ -1,23 +1,23 @@
 pragma solidity ^0.6.7;
 
-import "./base/BaseStrategyOtherPair.sol";
+import "./base/BaseStrategyOtherPairNonReentrant.sol";
 
-contract StrategyOtherPair is BaseStrategyOtherPair {
+contract StrategyOtherPairCometh is BaseStrategyOtherPairNonReentrant {
 
-    address public QUICK = 0x831753DD7087CaC61aB5644b308642cc1c33Dc13;
-    address public QUICKSWAP_ROUTER = 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff; //Quickswap router
+    address public constant MUST_TOKEN = 0x9C78EE466D6Cb57A4d01Fd887D2b5dFb2D46288f;
+    address public constant COMETH_ROUTER = 0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25;
     string private pair_name;
 
     constructor(address rewards, address lp, address tokenA, address tokenB, address strategist, string memory _pair_name)
         public
-        BaseStrategyOtherPair(
+        BaseStrategyOtherPairNonReentrant(
             rewards,
             lp,
             tokenA,
             tokenB,
-            QUICK,
+            MUST_TOKEN,
             strategist,
-            QUICKSWAP_ROUTER
+            COMETH_ROUTER
         )
     {
         pair_name = _pair_name;

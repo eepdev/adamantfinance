@@ -13,10 +13,11 @@ abstract contract BaseStrategyStakingRewards is BaseStrategy {
         address _rewards,
         address _want,
         address _strategist,
-        address _harvestedToken
+        address _harvestedToken,
+        address _currentRouter
     )
         public
-        BaseStrategy(_want, _strategist, _harvestedToken)
+        BaseStrategy(_want, _strategist, _harvestedToken, _currentRouter)
     {
         rewards = _rewards;
     }

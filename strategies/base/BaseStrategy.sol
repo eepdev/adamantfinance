@@ -25,12 +25,13 @@ abstract contract BaseStrategy is Ownable {
     address public jar;
 
     // Dex
-    address public constant currentRouter = 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff; //Quickswap router
+    address public currentRouter = 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff; //Quickswap router
 
     constructor(
         address _want,
         address _strategist,
-        address _harvestedToken
+        address _harvestedToken,
+        address _currentRouter
     ) public {
         require(_want != address(0));
         require(_strategist != address(0));
@@ -38,6 +39,7 @@ abstract contract BaseStrategy is Ownable {
         want = _want;
         strategist = _strategist;
         harvestedToken = _harvestedToken;
+        currentRouter = _currentRouter;
     }
 
     // **** Views **** //
