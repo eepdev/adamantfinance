@@ -32,8 +32,9 @@ contract DragonVault is VaultBase {
                 IERC20(dragonLair).safeTransfer(ercFund, feeAmount);
                 //Transfer remaining dQuick to the user
                 _safeRewardTransfer(_user, afterFeeAmount);
+                
                 //Apply ADDY reward multiplier to the feeAmount that the minter will mint for
-                feeAmount = feeAmount.mul(rewardMultiplier);
+                feeAmount = applyRewardMultiplier(feeAmount);
                 //Based on the profit generated for fee-sharing, the minter will mint to MultiFeeDistribution and then stake the minted tokens for the user
                 minter.mintFor(_user, IStrategy(strategy).harvestedToken(), feeAmount);
                 emit Claimed(_user, pendingReward);

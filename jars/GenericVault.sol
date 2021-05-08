@@ -18,8 +18,9 @@ contract GenericVault is VaultBase {
             uint256 pendingReward = user.shares.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
             if (pendingReward > 0) {
                 totalPendingReward = totalPendingReward.sub(pendingReward);
+                
                 //Apply reward multiplier to the pendingReward that the minter will mint for
-                pendingReward = pendingReward.mul(rewardMultiplier);
+                pendingReward = applyRewardMultiplier(pendingReward);
                 //Minter will mint to MultiFeeDistribution and then stake the minted tokens for the user
                 minter.mintFor(_user, IStrategy(strategy).harvestedToken(), pendingReward);
                 emit Claimed(_user, pendingReward);

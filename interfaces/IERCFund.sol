@@ -5,5 +5,9 @@ interface IERCFund {
 
     function depositToFeeDistributor(address token, uint256 amount) external;
 
+    function notifyFeeDistribution(address token) external;
+
     function getFee() external view returns (uint256);
+
+    function recover(address token) external;
 }

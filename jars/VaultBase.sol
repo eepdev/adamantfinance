@@ -39,8 +39,12 @@ abstract contract VaultBase is Ownable {
     uint256 public withdrawPenaltyTime = 0; //Disabled withdrawal penalty for now
     // Withdrawal penalty, 100 = 1%
     uint256 public withdrawPenalty = 50;
+
     // Certain vaults will give up to 10x ADDY rewards
-    uint256 public rewardMultiplier = 1;
+    // Additional usecase for ADDY: lock it to boost the yield of a certain vault
+    uint256 private rewardMultiplier = 1000;
+    uint256 private constant MULTIPLIER_BASE = 1000;
+    uint256 private constant MULTIPLIER_MAX = 10000;
 
     IERC20 public token;
     address public strategy;
@@ -56,6 +60,15 @@ abstract contract VaultBase is Ownable {
     }
 
     /* ========== VIEW FUNCTIONS ========== */
+
+    // 1000 = 1x multiplier
+    function getRewardMultiplier() public view returns (uint256) {
+        return rewardMultiplier;
+    }
+
+    function applyRewardMultiplier(uint256 _amount) internal view returns (uint256) {
+        return _amount.mul(rewardMultiplier).div(MULTIPLIER_BASE);
+    }
 
     function getRatio() public view returns (uint256) {
         return balance().mul(1e18).div(totalShares);
@@ -228,8 +241,7 @@ abstract contract VaultBase is Ownable {
     }
 
     function setRewardMultiplier(uint256 _rewardMultiplier) public onlyOwner {
-        require(_rewardMultiplier <= 10, "multiplier too high");
-        require(_rewardMultiplier >= 1, "multiplier too low");
+        require(_rewardMultiplier <= MULTIPLIER_MAX, "multiplier too high");
         rewardMultiplier = _rewardMultiplier;
     }
 
