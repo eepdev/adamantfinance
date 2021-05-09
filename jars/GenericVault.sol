@@ -4,9 +4,9 @@ import "./VaultBase.sol";
 
 contract GenericVault is VaultBase {
 
-    constructor(IStrategy _strategy, address _minter) 
+    constructor(IStrategy _strategy, address _minter, address _ercFund) 
         public
-        VaultBase(_strategy, _minter)
+        VaultBase(_strategy, _minter, _ercFund)
     {
         
     }

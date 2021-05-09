@@ -49,14 +49,16 @@ abstract contract VaultBase is Ownable {
     IERC20 public token;
     address public strategy;
     IMinter internal minter;
+    address public ercFund;
 
-    constructor(IStrategy _strategy, address _minter)
+    constructor(IStrategy _strategy, address _minter, address _ercFund)
         public
     {
         require(address(_strategy) != address(0));
         token = IERC20(_strategy.want());
         strategy = address(_strategy);
         minter = IMinter(_minter);
+        ercFund = _ercFund;
     }
 
     /* ========== VIEW FUNCTIONS ========== */
@@ -166,6 +168,7 @@ abstract contract VaultBase is Ownable {
         if(user.lastDepositTime.add(withdrawPenaltyTime) >= now) {
             uint256 earlyWithdrawalFee = r.mul(withdrawPenalty).div(keepMax);
             r = r.sub(earlyWithdrawalFee);
+            token.safeTransfer(ercFund, earlyWithdrawalFee);
         }
 
         token.safeTransfer(msg.sender, r);
@@ -203,6 +206,7 @@ abstract contract VaultBase is Ownable {
         if(user.lastDepositTime.add(withdrawPenaltyTime) >= now) {
             uint256 earlyWithdrawalFee = r.mul(withdrawPenalty).div(keepMax);
             r = r.sub(earlyWithdrawalFee);
+            token.safeTransfer(ercFund, earlyWithdrawalFee);
         }
 
         token.safeTransfer(msg.sender, r);

@@ -6,16 +6,15 @@ import "../interfaces/IERCFund.sol";
 //Stakes farmed QUICK in the Dragon's Lair
 contract DragonVault is VaultBase {
     
-    address public ercFund;
     //The Quick staking address (also the dQuick token contract)
     address public dragonLair = 0xf28164A485B0B2C90639E47b0f377b4a438a16B1;
 
     constructor(IStrategy _strategy, address _minter, address _ercFund) 
         public
-        VaultBase(_strategy, _minter
+        VaultBase(_strategy, _minter, _ercFund
         )
     {
-        ercFund = _ercFund;
+        
     }
 
     // Handles claiming the user's pending rewards
