@@ -15,6 +15,8 @@ abstract contract BaseStrategy is Ownable {
     using Address for address;
     using SafeMath for uint256;
 
+    uint256 public lastHarvestTime = 0;
+
     // Tokens
     address public want; //The LP token, Harvest calls this "rewardToken"
     address public constant weth = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619; //weth for Matic
@@ -182,6 +184,7 @@ abstract contract BaseStrategy is Ownable {
         if (_want > 0) {
             deposit();
         }
+        lastHarvestTime = now;
     }
 
     // **** Events **** //
