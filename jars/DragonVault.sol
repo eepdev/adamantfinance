@@ -63,10 +63,4 @@ contract DragonVault is VaultBase {
 
         emit RewardAdded(_reward, _amount);
     }
-    
-    //Only dQuick should be in this contract
-    function salvage(address _recipient, address _token, uint256 _amount) public onlyOwner {
-        require(_token != dragonLair, "cannot salvage");
-        IERC20(_token).safeTransfer(_recipient, _amount);
-    }
 }

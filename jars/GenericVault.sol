@@ -40,9 +40,4 @@ contract GenericVault is VaultBase {
 
         emit RewardAdded(_reward, _amount);
     }
-    
-    //No user tokens should be in this contract
-    function salvage(address _recipient, address _token, uint256 _amount) public onlyOwner {
-        IERC20(_token).safeTransfer(_recipient, _amount);
-    }
 }

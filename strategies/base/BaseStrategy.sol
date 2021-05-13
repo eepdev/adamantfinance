@@ -66,9 +66,10 @@ abstract contract BaseStrategy is Ownable {
         emit SetJar(_jar);
     }
 
-    function setStrategist(address _strategist) external onlyOwner {
+    //Changes the address the performance fee is sent to
+    /*function setStrategist(address _strategist) external onlyOwner {
         strategist = _strategist;
-    }
+    }*/
 
     // **** State mutations **** //
     function deposit() public virtual;

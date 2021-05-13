@@ -60,8 +60,11 @@ abstract contract BaseStrategyStakingRewards is BaseStrategy {
 
     // **** Admin functions ****
 
+    // Added to support recovering LP Rewards from other systems to be distributed to holders
     function salvage(address recipient, address token, uint256 amount) public onlyOwner {
-        require(token != want, "cannot salvage");
+        // Admin cannot withdraw the staking or harvested token from the contract
+        require(token != want, "cannot salvage want");
+        require(token != harvestedToken, "cannot salvage harvestedToken");
         IERC20(token).safeTransfer(recipient, amount);
     }
 }
