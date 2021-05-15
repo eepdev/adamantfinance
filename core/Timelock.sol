@@ -321,10 +321,10 @@ contract Timelock {
     }
 
     //Added function to disable a minter with 0 delay in the event of an emergency
-    function disableMinter(address target) public {
+    function disableMinter(address minter, address target) public {
         require(msg.sender == admin, "Timelock::disableMinter: Call must come from admin.");
 
-        IMinter(target).setMinter(target, false);
+        IMinter(minter).setMinter(target, false);
         emit DisabledMinter(target);
     }
 }

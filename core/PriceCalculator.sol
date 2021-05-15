@@ -17,10 +17,12 @@ contract PriceCalculator {
     address public constant dQUICK = 0xf28164A485B0B2C90639E47b0f377b4a438a16B1;
     address public constant MUST = 0x9C78EE466D6Cb57A4d01Fd887D2b5dFb2D46288f;
     address public constant WMATIC = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+    address public constant ELK = 0xE1C8f3d529BEa8E3fA1FAC5B416335a2f998EE1C;
     //Pools
     address public constant QUICK_WETH = 0x1Bd06B96dd42AdA85fDd0795f3B4A79DB914ADD5;
     address public constant MUST_WETH = 0x8826C072657983939c26E684edcfb0e4133f0B3d;
     address public constant WMATIC_WETH = 0xadbF1854e5883eB8aa7BAf50705338739e558E5b;
+    address public constant ELK_WETH = 0x85810cc42D5bbd3eC50aF9bE24D359e822eeFd55;
 
     function priceOfQuick() view public returns (uint256) {
         return valueOfAsset(QUICK, 1e18);
@@ -47,6 +49,10 @@ contract PriceCalculator {
         }
         if(asset == WMATIC) {
             return _valueOfAsset(WMATIC, amount, WMATIC_WETH);
+        }
+        if(asset == ELK) {
+            //Due to the low liquidity of the ELK/WETH pool, set a price cap of 1/100 ETH on ELK
+            return Math.min(amount.div(100), _valueOfAsset(ELK, amount, ELK_WETH));
         }
 
         return 0;
