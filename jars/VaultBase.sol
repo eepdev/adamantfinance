@@ -39,6 +39,8 @@ abstract contract VaultBase is Ownable {
     uint256 public withdrawPenaltyTime = 3 days;
     // Withdrawal penalty, 100 = 1%
     uint256 public withdrawPenalty = 50;
+    // For vaults that are farming pools with a deposit fee
+    uint256 public depositFee = 0;
 
     // Certain vaults will give up to 10x ADDY rewards
     // Additional usecase for ADDY: lock it to boost the yield of a certain vault
@@ -119,6 +121,12 @@ abstract contract VaultBase is Ownable {
             shares = _amount;
         } else {
             shares = (_amount.mul(totalShares)).div(_pool);
+        }
+
+        //when farming pools with a deposit fee
+        if(depositFee > 0) {
+            uint256 fee = shares.mul(depositFee).div(keepMax);
+            shares = shares.sub(fee);
         }
 
         totalShares = totalShares.add(shares);
@@ -247,6 +255,12 @@ abstract contract VaultBase is Ownable {
     function setRewardMultiplier(uint256 _rewardMultiplier) public onlyOwner {
         require(_rewardMultiplier <= MULTIPLIER_MAX, "multiplier too high");
         rewardMultiplier = _rewardMultiplier;
+    }
+
+    //shouldn't be farming things with a high deposit fee in the first place
+    function setPoolDepositFee(uint256 _depositFee) public onlyOwner {
+        require(_depositFee <= 1000, "?");
+        depositFee = _depositFee;
     }
 
     /* ========== EVENTS ========== */

@@ -73,10 +73,10 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     /* ========== STATE VARIABLES ========== */
 
     ERC20 private ADDY;
-    address public WETH;
+    address public WETH; //Used to calculate the # of ADDY each user gets; reducing the multiplier in the minter contract will cause the # of claimable ADDY to decrease as well
     ERC20 public rewardsToken;
     ERC20 public stakingToken;
-    uint256 public periodFinish;
+    uint256 public periodFinish = 0;
 
     // Constant for various precisions
     uint256 private constant PRICE_PRECISION = 1e6;
@@ -91,8 +91,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored = 0;
 
-    address public owner_address;
-    address public timelock_address; // Governance timelock address
     address public migrator;
     address public minter;
 
@@ -115,6 +113,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     mapping(address => LockedStake[]) private lockedStakes;
 
     mapping(address => bool) public greylist;
+    mapping(address => bool) public whitelist;
 
     bool public unlockedStakes; // Release lock stakes in case of system migration
 
@@ -130,20 +129,20 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
     constructor(
         address _rewardsDistribution,
-        address _rewardsToken, //0xc3FdbadC7c795EF1D6Ba111e06fF8F16A20Ea539 ADDY (or ADDY proxy token redeemable for ADDY)
+        address _minter,
+        address _rewardsToken, //0xc3FdbadC7c795EF1D6Ba111e06fF8F16A20Ea539 ADDY (or ADDY proxy token redeemable for ADDY to mitigate the damage of any possible minting exploits)
         address _stakingToken, //0xa5BF14BB945297447fE96f6cD1b31b40d31175CB ADDY/ETH LP
         address _addy_address, //0xc3FdbadC7c795EF1D6Ba111e06fF8F16A20Ea539 ADDY
-        address _weth_address, //0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619 WETH
-        address _timelock_address
+        address _weth_address //0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619 WETH
     ) public {
-        owner_address = msg.sender;
+        rewardsDistribution = _rewardsDistribution;
+        minter = _minter;
+
         rewardsToken = ERC20(_rewardsToken);
         stakingToken = ERC20(_stakingToken);
         ADDY = ERC20(_addy_address);
         WETH = _weth_address;
-        rewardsDistribution = _rewardsDistribution;
         lastUpdateTime = block.timestamp;
-        timelock_address = _timelock_address;
         unlockedStakes = false;
     }
 
@@ -230,6 +229,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     function stake(uint256 amount) external override nonReentrant notPaused updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
         require(greylist[msg.sender] == false, "address has been greylisted");
+        require(msg.sender == tx.origin || whitelist[msg.sender], "no contracts");
 
         // Pull the tokens from the staker
         TransferHelper.safeTransferFrom(address(stakingToken), msg.sender, address(this), amount);
@@ -248,6 +248,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     function stakeLocked(uint256 amount, uint256 secs) external nonReentrant notPaused updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
         require(secs > 0, "Cannot wait for a negative number");
+        require(msg.sender == tx.origin || whitelist[msg.sender], "no contracts");
         require(greylist[msg.sender] == false, "address has been greylisted");
         require(secs >= locked_stake_min_time, StringHelpers.strConcat("Minimum stake time not met (", locked_stake_min_time_str, ")") );
 
@@ -331,7 +332,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            IMinter(minter).mintFor(msg.sender, WETH, reward);
+            IMinter(minter).mintFor(msg.sender, WETH, reward); //ADDY is minted into the fee dist contract based on the WETH value of shares accumulated
             //rewardsToken.transfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
@@ -407,14 +408,14 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     }
 
     // Added to support recovering LP Rewards from other systems to be distributed to holders
-    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyByOwnerOrGovernance {
+    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
         // Admin cannot withdraw the staking token from the contract
         require(tokenAddress != address(stakingToken));
-        ERC20(tokenAddress).transfer(owner_address, tokenAmount);
+        ERC20(tokenAddress).transfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 
-    function setMultipliers(uint256 _locked_stake_max_multiplier, uint256 _cr_boost_max_multiplier) external onlyByOwnerOrGovernance {
+    function setMultipliers(uint256 _locked_stake_max_multiplier, uint256 _cr_boost_max_multiplier) external onlyOwner {
         require(_locked_stake_max_multiplier >= 1, "Multiplier must be greater than or equal to 1");
         require(_cr_boost_max_multiplier >= 1, "Max CR Boost must be greater than or equal to 1");
 
@@ -425,7 +426,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         emit LockedStakeMaxMultiplierUpdated(locked_stake_max_multiplier);
     }
 
-    function setLockedStakeTimeForMinAndMaxMultiplier(uint256 _locked_stake_time_for_max_multiplier, uint256 _locked_stake_min_time) external onlyByOwnerOrGovernance {
+    function setLockedStakeTimeForMinAndMaxMultiplier(uint256 _locked_stake_time_for_max_multiplier, uint256 _locked_stake_min_time) external onlyOwner {
         require(_locked_stake_time_for_max_multiplier >= 1, "Multiplier Max Time must be greater than or equal to 1");
         require(_locked_stake_min_time >= 1, "Multiplier Min Time must be greater than or equal to 1");
         
@@ -438,20 +439,19 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         emit LockedStakeMinTime(_locked_stake_min_time);
     }
 
-    function greylistAddress(address _address) external onlyByOwnerOrGovernance {
-        greylist[_address] = !(greylist[_address]);
+    function greylistAddress(address _address, bool _greylisted) external onlyOwner {
+        greylist[_address] = _greylisted;
     }
 
-    function unlockStakes() external onlyByOwnerOrGovernance {
+    function whitelistAddress(address _address, bool _whitelisted) external onlyOwner {
+        whitelist[_address] = _whitelisted;
+    }
+
+    function unlockStakes() external onlyOwner {
         unlockedStakes = !unlockedStakes;
     }
 
-    function setOwnerAndTimelock(address _new_owner, address _new_timelock) external onlyByOwnerOrGovernance {
-        owner_address = _new_owner;
-        timelock_address = _new_timelock;
-    }
-
-    function setMigrator(address _address) external onlyByOwnerOrGovernance {
+    function setMigrator(address _address) external onlyOwner {
         migrator = _address;
     }
 
@@ -464,11 +464,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
             rewards[account] = earned(account);
             userRewardPerTokenPaid[account] = rewardPerTokenStored;
         }
-        _;
-    }
-
-    modifier onlyByOwnerOrGovernance() {
-        require(msg.sender == owner_address || msg.sender == timelock_address, "You are not the owner or the governance timelock");
         _;
     }
 
