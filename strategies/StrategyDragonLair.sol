@@ -66,4 +66,8 @@ contract StrategyDragonLair is BaseStrategyStakingRewards {
     function pairName() external view returns (string memory) {
         return pair_name;
     }
+
+    function getFeeDistToken() external override view returns (address) {
+        return harvestedToken;
+    }
 }

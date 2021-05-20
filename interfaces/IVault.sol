@@ -12,4 +12,6 @@ interface IVault is IJar {
     function getTokensStaked(address _user) external view returns (uint256);
 
     function totalShares() external view returns (uint256);
+
+    function getRewardMultiplier() external view returns (uint256);   
 }

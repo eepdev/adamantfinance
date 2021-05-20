@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../../interfaces/IJar.sol";
-import "../../interfaces/IUniswapV2Pair.sol";
-import "../../interfaces/IUniswapRouterV2.sol";
+import "../../interfaces/uniswap/IUniswapV2Pair.sol";
+import "../../interfaces/uniswap/IUniswapRouterV2.sol";
 
 abstract contract BaseStrategy is Ownable {
     using SafeERC20 for IERC20;
@@ -20,11 +20,12 @@ abstract contract BaseStrategy is Ownable {
     // Tokens
     address public want; //The LP token, Harvest calls this "rewardToken"
     address public constant weth = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619; //weth for Matic
-    address public harvestedToken; //The token we harvest, will add support for multiple tokens in v2
+    address internal harvestedToken; //The token we harvest. If the reward pool emits multiple tokens, they should be converted to a single token.
 
-    // User accounts
+    // Contracts
     address public strategist; //The address the performance fee is sent to
-    address public jar;
+    address public multiHarvest; //The multi harvest contract
+    address public jar; //The vault/jar contract
 
     // Dex
     address public currentRouter = 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff; //Quickswap router
@@ -50,6 +51,9 @@ abstract contract BaseStrategy is Ownable {
         return IERC20(want).balanceOf(address(this));
     }
 
+    //Returns the token sent to the fee dist contract, which is used to calculate the amount of ADDY to mint when claiming rewards
+    function getFeeDistToken() external virtual view returns (address);
+
     function balanceOfPool() public virtual view returns (uint256);
 
     function getHarvestable() external virtual view returns (uint256);
@@ -66,10 +70,9 @@ abstract contract BaseStrategy is Ownable {
         emit SetJar(_jar);
     }
 
-    //Changes the address the performance fee is sent to
-    /*function setStrategist(address _strategist) external onlyOwner {
-        strategist = _strategist;
-    }*/
+    function setMultiHarvest(address _address) external onlyOwner {
+        multiHarvest = _address;
+    }
 
     // **** State mutations **** //
     function deposit() public virtual;

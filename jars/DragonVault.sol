@@ -35,7 +35,7 @@ contract DragonVault is VaultBase {
                 //Apply ADDY reward multiplier to the feeAmount that the minter will mint for
                 feeAmount = applyRewardMultiplier(feeAmount);
                 //Based on the profit generated for fee-sharing, the minter will mint to MultiFeeDistribution and then stake the minted tokens for the user
-                minter.mintFor(_user, IStrategy(strategy).harvestedToken(), feeAmount);
+                minter.mintFor(_user, IStrategy(strategy).getFeeDistToken(), feeAmount);
                 emit Claimed(_user, pendingReward);
             }
         }

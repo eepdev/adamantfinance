@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../interfaces/IUniswapV2Pair.sol";
-import "../interfaces/IUniswapRouterV2.sol";
+import "../interfaces/uniswap/IUniswapV2Pair.sol";
+import "../interfaces/uniswap/IUniswapRouterV2.sol";
 import "../interfaces/IMultiFeeDistribution.sol";
 
 //Contract where the fees are sent to before they are converted and sent to the feeDistributor contract
