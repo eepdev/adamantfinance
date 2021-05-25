@@ -40,10 +40,7 @@ abstract contract BaseStrategyRewardPair is BaseStrategyStakingRewards {
 
     // **** State Mutations ****
 
-    function harvest() public override {
-        //prevent unauthorized smart contracts from calling harvest()
-        require(msg.sender == tx.origin || msg.sender == owner() || msg.sender == strategist, "not authorized");
-        
+    function harvest() public override onlyHumanOrWhitelisted {
         _getReward();
 
         uint256 _harvested_balance = IERC20(harvestedToken).balanceOf(address(this));

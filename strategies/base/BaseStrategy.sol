@@ -44,6 +44,14 @@ abstract contract BaseStrategy is Ownable {
         harvestedToken = _harvestedToken;
         currentRouter = _currentRouter;
     }
+    
+    // **** Modifiers **** //
+    
+    //prevent unauthorized smart contracts from calling harvest()
+    modifier onlyHumanOrWhitelisted { 
+        require(msg.sender == tx.origin || msg.sender == owner() || msg.sender == multiHarvest, "not authorized");
+        _;
+    }
 
     // **** Views **** //
 
@@ -52,7 +60,7 @@ abstract contract BaseStrategy is Ownable {
     }
 
     //Returns the token sent to the fee dist contract, which is used to calculate the amount of ADDY to mint when claiming rewards
-    function getFeeDistToken() external virtual view returns (address);
+    function getFeeDistToken() public virtual view returns (address);
 
     function balanceOfPool() public virtual view returns (uint256);
 
