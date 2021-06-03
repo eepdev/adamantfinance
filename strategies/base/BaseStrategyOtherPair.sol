@@ -9,16 +9,16 @@ import "../../interfaces/IGenericVault.sol";
 abstract contract BaseStrategyOtherPair is BaseStrategyStakingRewards {
 
     // Addresses for MATIC
-    //address public quick = 0x831753DD7087CaC61aB5644b308642cc1c33Dc13;
     address public tokenA;
     address public tokenB;
-    //address public quickswapRouter = 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff; //Quickswap router
+    address public WMATIC = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
     
     uint256 public constant keepMax = 10000;
 
     // Uniswap swap paths
     address[] public reward_a_path;
     address[] public a_b_path;
+    address[] public reward_matic_path;
 
     constructor(
         address _rewards,
@@ -48,22 +48,44 @@ abstract contract BaseStrategyOtherPair is BaseStrategyStakingRewards {
         a_b_path = new address[](2);
         a_b_path[0] = _tokenA;
         a_b_path[1] = _tokenB;
+
+        reward_matic_path = new address[](2);
+        reward_matic_path[0] = _harvestedToken;
+        reward_matic_path[1] = WMATIC;
+    }
+
+    function getFeeDistToken() public override view returns (address) {
+        return WMATIC;
     }
 
     // **** State Mutations ****
+    
+    //Swap feeAmount to WMATIC before sending it to the fee dist, since profit is calculated in terms of WMATIC
+    function swapRewardToWmaticAndDistributeFee(uint256 feeAmount) internal {
+        if(feeAmount > 0) {
+            _swapUniswapWithPath(reward_matic_path, feeAmount);
+            uint256 _maticFee = IERC20(WMATIC).balanceOf(address(this));
+            _notifyJar(_maticFee);
+            IERC20(WMATIC).safeTransfer(strategist, _maticFee);
+        }
+    }
 
     function harvest() public override onlyHumanOrWhitelisted {
+        //Transfer any harvestedToken and WMATIC that may already be in the contract to the fee dist fund
+        IERC20(harvestedToken).safeTransfer(strategist, IERC20(harvestedToken).balanceOf(address(this)));
+        IERC20(WMATIC).safeTransfer(strategist, IERC20(WMATIC).balanceOf(address(this)));
+        
         _getReward();
 
         uint256 _harvested_balance = IERC20(harvestedToken).balanceOf(address(this));
 
-        //Distribute fee and swap Quick for tokenA
+        //Distribute fee and swap harvestedToken for tokenA
         if (_harvested_balance > 0) {
             uint256 feeAmount = _harvested_balance.mul(IERCFund(strategist).getFee()).div(keepMax);
             uint256 afterFeeAmount = _harvested_balance.sub(feeAmount);
-            _notifyJar(feeAmount);
+            
+            swapRewardToWmaticAndDistributeFee(feeAmount);
 
-            IERC20(harvestedToken).safeTransfer(strategist, feeAmount);
             _swapUniswapWithPath(reward_a_path, afterFeeAmount);
         }
 
@@ -96,6 +118,6 @@ abstract contract BaseStrategyOtherPair is BaseStrategyStakingRewards {
     }
 
     function _notifyJar(uint256 _amount) internal override {
-        IGenericVault(jar).notifyReward(harvestedToken, _amount);
+        IGenericVault(jar).notifyReward(getFeeDistToken(), _amount);
     }
 }

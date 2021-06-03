@@ -14,4 +14,14 @@ interface IVault is IJar {
     function totalShares() external view returns (uint256);
 
     function getRewardMultiplier() external view returns (uint256);   
+
+    function rewardAllocation() external view returns (uint256);   
+
+    function totalPendingReward() external view returns (uint256);   
+
+    function withdrawPenaltyTime() external view returns (uint256);   
+    
+    function increaseRewardAllocation(uint256 _newReward) external;
+
+    function setWithdrawPenaltyTime(uint256 _withdrawPenaltyTime) external;
 }

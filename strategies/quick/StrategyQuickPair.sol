@@ -27,8 +27,4 @@ contract StrategyQuickPair is BaseStrategyRewardPair {
     function pairName() external view returns (string memory) {
         return pair_name;
     }
-
-    function getFeeDistToken() public override view returns (address) {
-        return harvestedToken;
-    }
 }

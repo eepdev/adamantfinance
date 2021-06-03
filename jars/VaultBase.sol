@@ -41,6 +41,8 @@ abstract contract VaultBase is Ownable {
     uint256 public withdrawPenalty = 50;
     // For vaults that are farming pools with a deposit fee
     uint256 public depositFee = 0;
+    //Allowed amount of the token sent to the fee dist each vault can mint ADDY rewards for, default 1000 (1000 WMATIC = roughly 0.65 ETH = 312 ADDY)
+    uint256 public rewardAllocation = 1e18 * 1000;
 
     // Certain vaults will give up to 10x ADDY rewards
     // Additional usecase for ADDY: lock it to boost the yield of a certain vault
@@ -263,10 +265,17 @@ abstract contract VaultBase is Ownable {
         depositFee = _depositFee;
     }
 
+    //Increase the amount of the token sent to the fee dist the vault is allowed to mint ADDY for
+    function increaseRewardAllocation(uint256 _newReward) public onlyOwner {
+        rewardAllocation = rewardAllocation.add(_newReward);
+        emit RewardAllocated(_newReward, rewardAllocation);
+    }
+
     /* ========== EVENTS ========== */
 
     event Deposited(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardAdded(address reward, uint256 amount);
     event Claimed(address indexed user, uint256 amount);
+    event RewardAllocated(uint256 newReward, uint256 totalAllocation);
 }

@@ -21,6 +21,12 @@ contract GenericVault is VaultBase {
                 
                 //Apply reward multiplier to the pendingReward that the minter will mint for
                 pendingReward = applyRewardMultiplier(pendingReward);
+                
+                //Make sure the amount of the fee dist token the vault is allowed to mint for is above the amount we're trying to mint for
+                //Require statement is there for end users
+                require(rewardAllocation >= pendingReward, "Not enough rewards allocated");
+                rewardAllocation = rewardAllocation.sub(pendingReward);
+
                 //Minter will mint to MultiFeeDistribution and then stake the minted tokens for the user
                 minter.mintFor(_user, IStrategy(strategy).getFeeDistToken(), pendingReward);
                 emit Claimed(_user, pendingReward);
