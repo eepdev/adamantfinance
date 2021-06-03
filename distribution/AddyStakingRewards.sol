@@ -72,7 +72,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
     /* ========== STATE VARIABLES ========== */
 
-    ERC20 private ADDY;
     address public WETH; //Used to calculate the # of ADDY each user gets; reducing the multiplier in the minter contract will cause the # of claimable ADDY to decrease as well
     ERC20 public rewardsToken;
     ERC20 public stakingToken;
@@ -85,7 +84,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     // Max reward per second
     uint256 public rewardRate;
 
-    // uint256 public rewardsDuration = 86400 hours;
     uint256 public rewardsDuration = 604800; // 7 * 86400  (7 days)
 
     uint256 public lastUpdateTime;
@@ -99,8 +97,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     uint256 public locked_stake_min_time = 604800; // 7 * 86400  (7 days)
     string private locked_stake_min_time_str = "604800"; // 7 days on genesis
 
-    uint256 public cr_boost_max_multiplier = 3000000; // 6 decimals of precision. 1x = 1000000
-
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
@@ -113,7 +109,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     mapping(address => LockedStake[]) private lockedStakes;
 
     mapping(address => bool) public greylist;
-    mapping(address => bool) public whitelist;
 
     bool public unlockedStakes; // Release lock stakes in case of system migration
 
@@ -132,7 +127,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         address _minter,
         address _rewardsToken, //0xc3FdbadC7c795EF1D6Ba111e06fF8F16A20Ea539 ADDY (or ADDY proxy token redeemable for ADDY to mitigate the damage of any possible minting exploits)
         address _stakingToken, //0xa5BF14BB945297447fE96f6cD1b31b40d31175CB ADDY/ETH LP
-        address _addy_address, //0xc3FdbadC7c795EF1D6Ba111e06fF8F16A20Ea539 ADDY
         address _weth_address //0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619 WETH
     ) public {
         rewardsDistribution = _rewardsDistribution;
@@ -140,7 +134,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
         rewardsToken = ERC20(_rewardsToken);
         stakingToken = ERC20(_stakingToken);
-        ADDY = ERC20(_addy_address);
         WETH = _weth_address;
         lastUpdateTime = block.timestamp;
         unlockedStakes = false;
@@ -160,11 +153,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         uint256 multiplier = uint(MULTIPLIER_BASE).add(secs.mul(locked_stake_max_multiplier.sub(MULTIPLIER_BASE)).div(locked_stake_time_for_max_multiplier));
         if (multiplier > locked_stake_max_multiplier) multiplier = locked_stake_max_multiplier;
         return multiplier;
-    }
-
-    //returned the collateral boost multiplier for FRAX (which is actually MULTIPLIER_BASE since they disabled it)
-    function crBoostMultiplier() public pure returns (uint256) {
-        return MULTIPLIER_BASE;
     }
 
     // Total unlocked and locked liquidity tokens
@@ -211,7 +199,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         }
         else {
             return rewardPerTokenStored.add(
-                lastTimeRewardApplicable().sub(lastUpdateTime).mul(rewardRate).mul(crBoostMultiplier()).mul(1e18).div(PRICE_PRECISION).div(_staking_token_boosted_supply)
+                lastTimeRewardApplicable().sub(lastUpdateTime).mul(rewardRate).mul(MULTIPLIER_BASE).mul(1e18).div(PRICE_PRECISION).div(_staking_token_boosted_supply)
             );
         }
     }
@@ -221,7 +209,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     }
 
     function getRewardForDuration() external override view returns (uint256) {
-        return rewardRate.mul(rewardsDuration).mul(crBoostMultiplier()).div(PRICE_PRECISION);
+        return rewardRate.mul(rewardsDuration).mul(MULTIPLIER_BASE).div(PRICE_PRECISION);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -229,7 +217,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     function stake(uint256 amount) external override nonReentrant notPaused updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
         require(greylist[msg.sender] == false, "address has been greylisted");
-        require(msg.sender == tx.origin || whitelist[msg.sender], "no contracts");
+        require(msg.sender == tx.origin, "no contracts");
 
         // Pull the tokens from the staker
         TransferHelper.safeTransferFrom(address(stakingToken), msg.sender, address(this), amount);
@@ -248,7 +236,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     function stakeLocked(uint256 amount, uint256 secs) external nonReentrant notPaused updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
         require(secs > 0, "Cannot wait for a negative number");
-        require(msg.sender == tx.origin || whitelist[msg.sender], "no contracts");
+        require(msg.sender == tx.origin, "no contracts");
         require(greylist[msg.sender] == false, "address has been greylisted");
         require(secs >= locked_stake_min_time, StringHelpers.strConcat("Minimum stake time not met (", locked_stake_min_time_str, ")") );
 
@@ -325,7 +313,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
             emit WithdrawnLocked(msg.sender, theAmount, kek_id);
         }
-
     }
 
     function getReward() public override nonReentrant updateReward(msg.sender) {
@@ -338,9 +325,10 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         }
     }
     
-    //Transfers a user's locked stake to the migration logic contract and executes arbitrary migration logic
+    //Transfers a user's locked stake to the migration logic contract and executes arbitrary migration logic (i.e. to a new locked staking reward contract)
+    //Ownership of this contract should be renounced after the migrator is set, so users can trust that the migration contract won't be changed
     //Forfeits all pending rewards (since minter privileges may have been revoked from this contract)
-    //Not like Pancake's, etc's migrate function, the user needs to manually call it, for anyone reading this who doesn't know what "msg.sender" means
+    //Not like Pancake's, etc's migrate function, the user needs to manually call it, for end users reading this who don't know what "msg.sender" means
     function migrate(bytes32 kek_id) external nonReentrant {
         LockedStake memory thisStake;
         thisStake.amount = 0;
@@ -353,7 +341,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
             }
         }
         require(thisStake.kek_id == kek_id, "Stake not found");
-        require(block.timestamp >= thisStake.ending_timestamp || unlockedStakes == true, "Stake is still locked!");
 
         rewards[msg.sender] = 0;
         uint256 theAmount = thisStake.amount;
@@ -373,7 +360,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
             // Approve tokens and execute arbitrary migration logic
             stakingToken.safeApprove(migrator, 0);
             stakingToken.safeApprove(migrator, theAmount);
-            IMigrator(migrator).migrate(theAmount);
+            IMigrator(migrator).migrate(theAmount); //will fail if migrator is null
 
             emit WithdrawnLocked(msg.sender, theAmount, kek_id);
         }
@@ -383,6 +370,8 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     
     function notifyRewardAmount(uint256 reward, uint256 _rewardsDuration) external onlyRewardsDistribution updateReward(address(0)) {
         require(block.timestamp.add(_rewardsDuration) >= periodFinish, "Cannot reduce existing period");
+        require(reward <= 1e19, "adding too much"); //Set limit of 10 ETH worth to add at once
+        require(_rewardsDuration <= 30 days, "duration too long"); //Set limit of 30 days to guard against accidentally swapping the args
         
         if (block.timestamp >= periodFinish) {
             rewardRate = reward.div(_rewardsDuration);
@@ -415,14 +404,11 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         emit Recovered(tokenAddress, tokenAmount);
     }
 
-    function setMultipliers(uint256 _locked_stake_max_multiplier, uint256 _cr_boost_max_multiplier) external onlyOwner {
+    function setMultipliers(uint256 _locked_stake_max_multiplier) external onlyOwner {
         require(_locked_stake_max_multiplier >= 1, "Multiplier must be greater than or equal to 1");
-        require(_cr_boost_max_multiplier >= 1, "Max CR Boost must be greater than or equal to 1");
 
         locked_stake_max_multiplier = _locked_stake_max_multiplier;
-        cr_boost_max_multiplier = _cr_boost_max_multiplier;
         
-        emit MaxCRBoostMultiplier(cr_boost_max_multiplier);
         emit LockedStakeMaxMultiplierUpdated(locked_stake_max_multiplier);
     }
 
@@ -441,10 +427,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
     function greylistAddress(address _address, bool _greylisted) external onlyOwner {
         greylist[_address] = _greylisted;
-    }
-
-    function whitelistAddress(address _address, bool _whitelisted) external onlyOwner {
-        whitelist[_address] = _whitelisted;
     }
 
     function unlockStakes() external onlyOwner {
@@ -475,12 +457,8 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     event Withdrawn(address indexed user, uint256 amount);
     event WithdrawnLocked(address indexed user, uint256 amount, bytes32 kek_id);
     event RewardPaid(address indexed user, uint256 reward);
-    event RewardsDurationUpdated(uint256 newDuration);
     event Recovered(address token, uint256 amount);
-    event RewardsPeriodRenewed(address token);
-    event DefaultInitialization();
     event LockedStakeMaxMultiplierUpdated(uint256 multiplier);
     event LockedStakeTimeForMaxMultiplier(uint256 secs);
     event LockedStakeMinTime(uint256 secs);
-    event MaxCRBoostMultiplier(uint256 multiplier);
 }
