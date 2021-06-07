@@ -330,6 +330,8 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     //Forfeits all pending rewards (since minter privileges may have been revoked from this contract)
     //Not like Pancake's, etc's migrate function, the user needs to manually call it, for end users reading this who don't know what "msg.sender" means
     function migrate(bytes32 kek_id) external nonReentrant {
+        require(migrator != address(0), "No migrator set");
+        
         LockedStake memory thisStake;
         thisStake.amount = 0;
         uint theIndex;
