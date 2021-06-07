@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0;
 pragma experimental ABIEncoderV2;
 
@@ -59,10 +60,6 @@ interface IMultiFeeDistribution {
     // Stake tokens to receive rewards
     // Locked tokens cannot be withdrawn for lockDuration and are eligible to receive stakingReward rewards
     function stake(uint256 amount, bool lock) external;
-
-    // Stake tokens to receive rewards
-    // Locked tokens cannot be withdrawn for lockDuration and are eligible to receive stakingReward rewards
-    function stakeFor(address user, uint256 amount, bool lock) external;
     
     // Withdraw staked tokens
     // First withdraws unlocked tokens, then earned tokens. Withdrawing earned tokens

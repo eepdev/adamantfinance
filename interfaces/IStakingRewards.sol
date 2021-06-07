@@ -35,16 +35,6 @@ interface IStakingRewards {
 
     function stake(uint256 amount) external;
 
-    function stakeLocked(uint256 amount, uint256 secs) external;
-
-    function stakeWithPermit(
-        uint256 amount,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
-
     function stakingToken() external view returns (address);
 
     function totalSupply() external view returns (uint256);
@@ -52,6 +42,4 @@ interface IStakingRewards {
     function userRewardPerTokenPaid(address) external view returns (uint256);
 
     function withdraw(uint256 amount) external;
-
-    function withdrawLocked(bytes32 kek_id) external;
 }
