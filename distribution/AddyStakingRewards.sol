@@ -91,6 +91,7 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
     address public migrator;
     address public minter;
+    address public externalStakingRewards; //The Quickswap/Sushi staking rewards we're staking in (or a wrapper contract for it)
 
     uint256 public locked_stake_max_multiplier = 3000000; // 6 decimals of precision. 1x = 1000000
     uint256 public locked_stake_time_for_max_multiplier = 3 * 365 * 86400; // 3 years
@@ -127,7 +128,8 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         address _minter,
         address _rewardsToken, //0xc3FdbadC7c795EF1D6Ba111e06fF8F16A20Ea539 ADDY (or ADDY proxy token redeemable for ADDY to mitigate the damage of any possible minting exploits)
         address _stakingToken, //0xa5BF14BB945297447fE96f6cD1b31b40d31175CB ADDY/ETH LP
-        address _weth_address //0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619 WETH
+        address _weth_address, //0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619 WETH
+        address _external_staking_rewards
     ) public {
         rewardsDistribution = _rewardsDistribution;
         minter = _minter;
@@ -135,6 +137,8 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         rewardsToken = ERC20(_rewardsToken);
         stakingToken = ERC20(_stakingToken);
         WETH = _weth_address;
+        externalStakingRewards = _external_staking_rewards;
+
         lastUpdateTime = block.timestamp;
         unlockedStakes = false;
     }
@@ -222,6 +226,9 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         // Pull the tokens from the staker
         TransferHelper.safeTransferFrom(address(stakingToken), msg.sender, address(this), amount);
 
+        //Deposit the tokens in the external staking rewards contract
+        depositToExternalStakingRewards(amount);
+
         // Staking token supply and boosted supply
         _staking_token_supply = _staking_token_supply.add(amount);
         _staking_token_boosted_supply = _staking_token_boosted_supply.add(amount);
@@ -253,6 +260,9 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         // Pull the tokens from the staker
         TransferHelper.safeTransferFrom(address(stakingToken), msg.sender, address(this), amount);
 
+        //Deposit the tokens in the external staking rewards contract
+        depositToExternalStakingRewards(amount);
+
         // Staking token supply and boosted supply
         _staking_token_supply = _staking_token_supply.add(amount);
         _staking_token_boosted_supply = _staking_token_boosted_supply.add(boostedAmount);
@@ -274,6 +284,9 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         // Staking token supply and boosted supply
         _staking_token_supply = _staking_token_supply.sub(amount);
         _staking_token_boosted_supply = _staking_token_boosted_supply.sub(amount);
+
+        //Withdraw the tokens from the external staking rewards contract
+        withdrawFromExternalStakingRewards(amount);
 
         // Give the tokens to the withdrawer
         stakingToken.safeTransfer(msg.sender, amount);
@@ -307,6 +320,9 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
             // Remove the stake from the array
             delete lockedStakes[msg.sender][theIndex];
+
+            //Withdraw the tokens from the external staking rewards contract
+            withdrawFromExternalStakingRewards(theAmount);
 
             // Give the tokens to the withdrawer
             stakingToken.safeTransfer(msg.sender, theAmount);
@@ -359,6 +375,9 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
             // Remove the stake from the array
             delete lockedStakes[msg.sender][theIndex];
 
+            //Withdraw the tokens from the external staking rewards contract
+            withdrawFromExternalStakingRewards(theAmount);
+
             // Approve tokens and execute arbitrary migration logic
             stakingToken.safeApprove(migrator, 0);
             stakingToken.safeApprove(migrator, theAmount);
@@ -366,6 +385,21 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
             emit WithdrawnLocked(msg.sender, theAmount, kek_id);
         }
+    }
+
+    function depositToExternalStakingRewards(uint256 amount) internal {
+        ERC20(stakingToken).safeApprove(externalStakingRewards, 0);
+        ERC20(stakingToken).safeApprove(externalStakingRewards, amount);
+        IStakingRewards(externalStakingRewards).stake(amount);
+    }
+
+    function withdrawFromExternalStakingRewards(uint256 amount) internal {
+        IStakingRewards(externalStakingRewards).withdraw(amount);
+    }
+
+    //Usage: Get reward, then use recoverERC20 to transfer it to the fee distribution fund
+    function getRewardFromExternalStakingRewards() external onlyOwner {
+        IStakingRewards(externalStakingRewards).getReward();
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
