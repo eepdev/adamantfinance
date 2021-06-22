@@ -1,4 +1,4 @@
-pragma solidity ^0.6.2;
+pragma solidity ^0.6.12;
 
 //A Jar is a contract that users deposit funds into.
 //Jar contracts are paired with a strategy contract that interacts with the pool being farmed.

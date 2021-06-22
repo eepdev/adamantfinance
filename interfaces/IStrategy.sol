@@ -1,9 +1,9 @@
-pragma solidity >=0.6.0;
+pragma solidity ^0.6.12;
 
 interface IStrategy {
     function getFeeDistToken() external view returns (address);
 
-    function lastHarvestTime() external returns (uint256);
+    function lastHarvestTime() external view returns (uint256);
 
     function rewards() external view returns (address);
 

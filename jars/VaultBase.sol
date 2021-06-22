@@ -1,6 +1,6 @@
 // Based on https://github.com/iearn-finance/vaults/blob/master/contracts/vaults/yVault.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.7;
+pragma solidity ^0.6.12;
 
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IMinter.sol";

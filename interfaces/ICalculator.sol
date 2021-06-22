@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 
 interface ICalculator {
     function valueOfAsset(address asset, uint256 amount)
