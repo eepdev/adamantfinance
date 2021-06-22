@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.7;
+pragma solidity ^0.6.12;
 
 import "./BaseStrategyStakingRewards.sol";
 import "../../interfaces/IERCFund.sol";
@@ -61,22 +61,22 @@ abstract contract BaseStrategyRewardPair is BaseStrategyStakingRewards {
     }
 
     function harvest() public override onlyHumanOrWhitelisted {
-        //Transfer any harvestedToken and WMATIC that may already be in the contract to the fee dist fund
-        IERC20(harvestedToken).safeTransfer(strategist, IERC20(harvestedToken).balanceOf(address(this)));
+        //Transfer WMATIC that may already be in the contract to the fee dist fund
         IERC20(WMATIC).safeTransfer(strategist, IERC20(WMATIC).balanceOf(address(this)));
         
+        //Calculate the amount of tokens harvested and distribute fee
+        uint256 balance_before = IERC20(harvestedToken).balanceOf(address(this));
         _getReward();
-
-        uint256 _harvested_balance = IERC20(harvestedToken).balanceOf(address(this));
-
-        //Distribute fee and swap 1/2 of the harvested token for otherToken
-        if (_harvested_balance > 0) {
-            uint256 feeAmount = _harvested_balance.mul(IERCFund(strategist).getFee()).div(keepMax);
-            uint256 afterFeeAmount = _harvested_balance.sub(feeAmount);
-            
+        uint256 amountHarvested = IERC20(harvestedToken).balanceOf(address(this)).sub(balance_before);
+        if (amountHarvested > 0) {
+            uint256 feeAmount = amountHarvested.mul(IERCFund(strategist).getFee()).div(keepMax);
             swapRewardToWmaticAndDistributeFee(feeAmount);
+        }
 
-            _swapUniswapWithPath(reward_other_path, afterFeeAmount.div(2));
+        //Swap 1/2 of the remaining harvestedToken for otherToken
+        uint256 remainingHarvested = IERC20(harvestedToken).balanceOf(address(this));
+        if (remainingHarvested > 0) {
+            _swapUniswapWithPath(reward_other_path, remainingHarvested.div(2));
         }
 
         uint256 harvestedTokenBalance = IERC20(harvestedToken).balanceOf(address(this));
