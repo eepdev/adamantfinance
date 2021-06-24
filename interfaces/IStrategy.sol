@@ -27,8 +27,6 @@ interface IStrategy {
 
     function skim() external;
 
-    function migrate() external;
-
     function withdrawAll() external returns (uint256);
 
     function balanceOf() external view returns (uint256);
@@ -40,18 +38,4 @@ interface IStrategy {
     function harvest() external;
 
     function setJar(address _jar) external;
-
-    function migrate(address newStakingContract) external;
-
-    function getLastTimeMigrated() external view returns (uint256);
-
-    function execute(address _target, bytes calldata _data)
-        external
-        payable
-        returns (bytes memory response);
-
-    function execute(bytes calldata _data)
-        external
-        payable
-        returns (bytes memory response);
 }
