@@ -7,22 +7,24 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../../interfaces/IJar.sol";
+import "../../interfaces/IStrategy.sol";
 import "../../interfaces/uniswap/IUniswapV2Pair.sol";
 import "../../interfaces/uniswap/IUniswapRouterV2.sol";
 
-abstract contract BaseStrategy is Ownable {
+abstract contract BaseStrategy is IStrategy, Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    uint256 public lastHarvestTime = 0;
+    uint256 public override lastHarvestTime = 0;
 
     // Tokens
-    address public want; //The LP token, Harvest calls this "rewardToken"
+    address public override want; //The LP token, Harvest calls this "rewardToken"
     address public constant weth = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619; //weth for Matic
     address internal harvestedToken; //The token we harvest. If the reward pool emits multiple tokens, they should be converted to a single token.
 
     // Contracts
+    address public override rewards; //The staking rewards/MasterChef contract
     address public strategist; //The address the performance fee is sent to
     address public multiHarvest; //The multi harvest contract
     address public jar; //The vault/jar contract
@@ -34,7 +36,8 @@ abstract contract BaseStrategy is Ownable {
         address _want,
         address _strategist,
         address _harvestedToken,
-        address _currentRouter
+        address _currentRouter,
+        address _rewards
     ) public {
         require(_want != address(0));
         require(_strategist != address(0));
@@ -43,6 +46,7 @@ abstract contract BaseStrategy is Ownable {
         strategist = _strategist;
         harvestedToken = _harvestedToken;
         currentRouter = _currentRouter;
+        rewards = _rewards;
     }
     
     // **** Modifiers **** //
@@ -59,20 +63,15 @@ abstract contract BaseStrategy is Ownable {
         return IERC20(want).balanceOf(address(this));
     }
 
-    //Returns the token sent to the fee dist contract, which is used to calculate the amount of ADDY to mint when claiming rewards
-    function getFeeDistToken() public virtual view returns (address);
-
     function balanceOfPool() public virtual view returns (uint256);
 
-    function getHarvestable() external virtual view returns (uint256);
-
-    function balanceOf() public view returns (uint256) {
+    function balanceOf() public override view returns (uint256) {
         return balanceOfWant().add(balanceOfPool());
     }
 
     // **** Setters **** //
 
-    function setJar(address _jar) external onlyOwner {
+    function setJar(address _jar) external override onlyOwner {
         require(jar == address(0), "jar already set");
         jar = _jar;
         emit SetJar(_jar);
@@ -83,10 +82,10 @@ abstract contract BaseStrategy is Ownable {
     }
 
     // **** State mutations **** //
-    function deposit() public virtual;
+    function deposit() public override virtual;
 
     // Withdraw partial funds, normally used with a jar withdrawal
-    function withdraw(uint256 _amount) external {
+    function withdraw(uint256 _amount) external override {
         require(msg.sender == jar, "!jar");
         uint256 _balance = IERC20(want).balanceOf(address(this));
         if (_balance < _amount) {
@@ -98,8 +97,9 @@ abstract contract BaseStrategy is Ownable {
     }
 
     // Withdraw funds, used to swap between strategies
+    // Not utilized right now, but could be used for i.e. multi stablecoin strategies
     function withdrawForSwap(uint256 _amount)
-        external
+        external override
         returns (uint256 balance)
     {
         require(msg.sender == jar, "!jar");
@@ -110,13 +110,9 @@ abstract contract BaseStrategy is Ownable {
         IERC20(want).safeTransfer(jar, balance);
     }
 
-    function _withdrawAll() internal {
-        _withdrawSome(balanceOfPool());
-    }
-
     function _withdrawSome(uint256 _amount) internal virtual returns (uint256);
 
-    function harvest() public virtual;
+    function harvest() public override virtual;
 
     // **** Internal functions ****
     function _swapUniswap(

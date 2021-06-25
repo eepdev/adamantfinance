@@ -6,7 +6,6 @@ import "../../interfaces/IStakingRewards.sol";
 // Base contract for SNX Staking rewards contract interfaces
 
 abstract contract BaseStrategyStakingRewards is BaseStrategy {
-    address public rewards;
 
     // **** Getters ****
     constructor(
@@ -17,9 +16,9 @@ abstract contract BaseStrategyStakingRewards is BaseStrategy {
         address _currentRouter
     )
         public
-        BaseStrategy(_want, _strategist, _harvestedToken, _currentRouter)
+        BaseStrategy(_want, _strategist, _harvestedToken, _currentRouter, _rewards)
     {
-        rewards = _rewards;
+        
     }
 
     function balanceOfPool() public override view returns (uint256) {
