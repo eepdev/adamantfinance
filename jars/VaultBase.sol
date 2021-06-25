@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.12;
 
-import "../interfaces/IStrategy.sol";
-import "../interfaces/IMinter.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../interfaces/IStrategy.sol";
+import "../interfaces/IMinter.sol";
+import "../interfaces/IVault.sol";
 
-abstract contract VaultBase is Ownable {
+abstract contract VaultBase is IVault, Ownable {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -30,19 +31,19 @@ abstract contract VaultBase is Ownable {
     mapping (address => UserInfo) public userInfo;
 
     // The total amount of pending rewards available for stakers to claim
-    uint256 public totalPendingReward;
+    uint256 public override totalPendingReward;
     // Accumulated rewards per share, times 1e12.
     uint256 public accRewardPerShare;
     // The total # of shares issued
-    uint256 public totalShares;
+    uint256 public override totalShares;
     // Withdrawing before this much time has passed will have a withdrawal penalty
-    uint256 public withdrawPenaltyTime = 3 days;
+    uint256 public override withdrawPenaltyTime = 3 days;
     // Withdrawal penalty, 100 = 1%
-    uint256 public withdrawPenalty = 50;
+    uint256 public override withdrawPenalty = 50;
     // For vaults that are farming pools with a deposit fee
     uint256 public depositFee = 0;
     //Allowed amount of the token sent to the fee dist each vault can mint ADDY rewards for, default 1000 (1000 WMATIC = roughly 0.65 ETH = 312 ADDY)
-    uint256 public rewardAllocation = 1e18 * 1000;
+    uint256 public override rewardAllocation = 1e18 * 1000;
 
     // Certain vaults will give up to 10x ADDY rewards
     // Additional usecase for ADDY: lock it to boost the yield of a certain vault
@@ -50,8 +51,8 @@ abstract contract VaultBase is Ownable {
     uint256 private constant MULTIPLIER_BASE = 1000;
     uint256 private constant MULTIPLIER_MAX = 10000;
 
-    IERC20 public token;
-    address public strategy;
+    IERC20 public override token;
+    address public override strategy;
     IMinter internal minter;
     address public ercFund;
 
@@ -68,7 +69,7 @@ abstract contract VaultBase is Ownable {
     /* ========== VIEW FUNCTIONS ========== */
 
     // 1000 = 1x multiplier
-    function getRewardMultiplier() public view returns (uint256) {
+    function getRewardMultiplier() public override view returns (uint256) {
         return rewardMultiplier;
     }
 
@@ -76,40 +77,40 @@ abstract contract VaultBase is Ownable {
         return _amount.mul(rewardMultiplier).div(MULTIPLIER_BASE);
     }
 
-    function getRatio() public view returns (uint256) {
+    function getRatio() public override view returns (uint256) {
         return balance().mul(1e18).div(totalShares);
     }
 
-    function balance() public view returns (uint256) {
+    function balance() public override view returns (uint256) {
         return
             token.balanceOf(address(this)).add(
                 IStrategy(strategy).balanceOf()
             );
     }
 
-    function balanceOf(address _user) public view returns (uint256) {
+    function balanceOf(address _user) public override view returns (uint256) {
         return userInfo[_user].shares;
     }
 
-    function getPendingReward(address _user) public view returns (uint256) {
+    function getPendingReward(address _user) public override view returns (uint256) {
         return userInfo[_user].shares.mul(accRewardPerShare).div(1e12).sub(userInfo[_user].rewardDebt);
     }
 
-    function getLastDepositTime(address _user) public view returns (uint256) {
+    function getLastDepositTime(address _user) public override view returns (uint256) {
         return userInfo[_user].lastDepositTime;
     }
 
-    function getTokensStaked(address _user) public view returns (uint256) {
+    function getTokensStaked(address _user) public override view returns (uint256) {
         return userInfo[_user].tokensStaked;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function depositAll() external {
+    function depositAll() external override {
         deposit(token.balanceOf(msg.sender));
     }
 
-    function deposit(uint256 _amount) public {
+    function deposit(uint256 _amount) public override {
         require(msg.sender == tx.origin, "no contracts");
         _claimReward(msg.sender);
 
@@ -150,7 +151,7 @@ abstract contract VaultBase is Ownable {
     }
 
     // Withdraw all tokens and claim rewards.
-    function withdrawAll() external {
+    function withdrawAll() external override {
         UserInfo storage user = userInfo[msg.sender];
         uint256 _shares = user.shares;
         uint256 r = (balance().mul(_shares)).div(totalShares);
@@ -244,17 +245,17 @@ abstract contract VaultBase is Ownable {
         minter = newMinter;
     }
 
-    function setWithdrawPenaltyTime(uint256 _withdrawPenaltyTime) public onlyOwner {
+    function setWithdrawPenaltyTime(uint256 _withdrawPenaltyTime) public override onlyOwner {
         require(_withdrawPenaltyTime <= 30 days, "delay too high");
         withdrawPenaltyTime = _withdrawPenaltyTime;
     }
 
-    function setWithdrawPenalty(uint256 _withdrawPenalty) public onlyOwner {
+    function setWithdrawPenalty(uint256 _withdrawPenalty) public override onlyOwner {
         require(_withdrawPenalty <= 500, "penalty too high");
         withdrawPenalty = _withdrawPenalty;
     }
 
-    function setRewardMultiplier(uint256 _rewardMultiplier) public onlyOwner {
+    function setRewardMultiplier(uint256 _rewardMultiplier) public override onlyOwner {
         require(_rewardMultiplier <= MULTIPLIER_MAX, "multiplier too high");
         rewardMultiplier = _rewardMultiplier;
     }
@@ -266,7 +267,7 @@ abstract contract VaultBase is Ownable {
     }
 
     //Increase the amount of the token sent to the fee dist the vault is allowed to mint ADDY for
-    function increaseRewardAllocation(uint256 _newReward) public onlyOwner {
+    function increaseRewardAllocation(uint256 _newReward) public override onlyOwner {
         rewardAllocation = rewardAllocation.add(_newReward);
         emit RewardAllocated(_newReward, rewardAllocation);
     }

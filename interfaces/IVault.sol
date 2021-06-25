@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.12;
 
 import "./IJar.sol";
@@ -28,4 +29,6 @@ interface IVault is IJar {
     function setWithdrawPenaltyTime(uint256 _withdrawPenaltyTime) external;
 
     function setWithdrawPenalty(uint256 _withdrawPenalty) external;
+
+    function setRewardMultiplier(uint256 _rewardMultiplier) external;
 }
