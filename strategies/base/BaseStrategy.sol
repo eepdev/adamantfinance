@@ -5,13 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../../interfaces/IJar.sol";
 import "../../interfaces/IStrategy.sol";
 import "../../interfaces/uniswap/IUniswapV2Pair.sol";
 import "../../interfaces/uniswap/IUniswapRouterV2.sol";
 
-abstract contract BaseStrategy is IStrategy, Ownable {
+abstract contract BaseStrategy is IStrategy, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -41,6 +42,9 @@ abstract contract BaseStrategy is IStrategy, Ownable {
     ) public {
         require(_want != address(0));
         require(_strategist != address(0));
+        require(_harvestedToken != address(0));
+        require(_currentRouter != address(0));
+        require(_rewards != address(0));
 
         want = _want;
         strategist = _strategist;
@@ -73,11 +77,13 @@ abstract contract BaseStrategy is IStrategy, Ownable {
 
     function setJar(address _jar) external override onlyOwner {
         require(jar == address(0), "jar already set");
+        require(_jar != address(0));
         jar = _jar;
         emit SetJar(_jar);
     }
 
     function setMultiHarvest(address _address) external onlyOwner {
+        require(_address != address(0));
         multiHarvest = _address;
     }
 

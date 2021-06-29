@@ -33,6 +33,7 @@ abstract contract BaseStrategyRewardPair is BaseStrategyStakingRewards {
             _router
         )
     {
+        require(_otherToken != address(0));
         otherToken = _otherToken;
 
         reward_other_path = new address[](2);
@@ -60,7 +61,7 @@ abstract contract BaseStrategyRewardPair is BaseStrategyStakingRewards {
         }
     }
 
-    function harvest() public override onlyHumanOrWhitelisted {
+    function harvest() public override onlyHumanOrWhitelisted nonReentrant {
         //Transfer WMATIC that may already be in the contract to the fee dist fund
         IERC20(WMATIC).safeTransfer(strategist, IERC20(WMATIC).balanceOf(address(this)));
         
