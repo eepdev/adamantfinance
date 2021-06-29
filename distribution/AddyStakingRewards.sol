@@ -341,11 +341,11 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
         }
     }
     
-    //Transfers a user's locked stake to the migration logic contract and executes arbitrary migration logic (i.e. to a new locked staking reward contract)
+    //Transfers a locked stake belonging to the user to the migration logic contract and executes arbitrary migration logic (i.e. to a new locked staking reward contract)
     //Ownership of this contract should be renounced after the migrator is set, so users can trust that the migration contract won't be changed
     //Forfeits all pending rewards (since minter privileges may have been revoked from this contract)
     //Not like Pancake's, etc's migrate function, the user needs to manually call it, for end users reading this who don't know what "msg.sender" means
-    function migrate(bytes32 kek_id) external nonReentrant {
+    function migrateLockedStake(bytes32 kek_id) external nonReentrant {
         require(migrator != address(0), "No migrator set");
         
         LockedStake memory thisStake;
