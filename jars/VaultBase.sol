@@ -6,11 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IMinter.sol";
 import "../interfaces/IVault.sol";
 
-abstract contract VaultBase is IVault, Ownable {
+abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -110,7 +111,7 @@ abstract contract VaultBase is IVault, Ownable {
         deposit(token.balanceOf(msg.sender));
     }
 
-    function deposit(uint256 _amount) public override {
+    function deposit(uint256 _amount) public override nonReentrant {
         require(msg.sender == tx.origin, "no contracts");
         _claimReward(msg.sender);
 
@@ -151,7 +152,7 @@ abstract contract VaultBase is IVault, Ownable {
     }
 
     // Withdraw all tokens and claim rewards.
-    function withdrawAll() external override {
+    function withdrawAll() external override nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
         uint256 _shares = user.shares;
         uint256 r = (balance().mul(_shares)).div(totalShares);
@@ -187,7 +188,7 @@ abstract contract VaultBase is IVault, Ownable {
     }
 
     // Withdraw all tokens without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw() public {
+    function emergencyWithdraw() public nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
         uint256 _shares = user.shares;
         uint256 r = (balance().mul(_shares)).div(totalShares);
@@ -224,7 +225,7 @@ abstract contract VaultBase is IVault, Ownable {
         emit Withdrawn(msg.sender, r);
     }
     
-    function claim() public {
+    function claim() public nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
         require(user.shares > 0, "no stake");
 
@@ -241,8 +242,9 @@ abstract contract VaultBase is IVault, Ownable {
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     //Vault deployer also needs to register the vault with the new minter
-    function setMinter(IMinter newMinter) public onlyOwner {
-        minter = newMinter;
+    function setMinter(address newMinter) public onlyOwner {
+        require(newMinter != address(0));
+        minter = IMinter(newMinter);
     }
 
     function setWithdrawPenaltyTime(uint256 _withdrawPenaltyTime) public override onlyOwner {
