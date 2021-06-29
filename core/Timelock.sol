@@ -9,6 +9,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.12;
 import "../interfaces/IMinter.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 library SafeMath {
     /**
@@ -208,7 +209,7 @@ library SafeMath {
     }
 }
 
-contract Timelock {
+contract Timelock is ReentrancyGuard {
     using SafeMath for uint;
 
     event NewAdmin(address indexed newAdmin);
@@ -234,6 +235,7 @@ contract Timelock {
     constructor(address admin_, uint delay_) public {
         require(delay_ >= MINIMUM_DELAY, "Timelock::constructor: Delay must exceed minimum delay.");
         require(delay_ <= MAXIMUM_DELAY, "Timelock::setDelay: Delay must not exceed maximum delay.");
+        require(admin_ != address(0));
 
         admin = admin_;
         delay = delay_;
@@ -261,6 +263,7 @@ contract Timelock {
 
     function setPendingAdmin(address pendingAdmin_) public {
         require(msg.sender == address(this), "Timelock::setPendingAdmin: Call must come from Timelock.");
+        require(pendingAdmin_ != address(0));
         pendingAdmin = pendingAdmin_;
 
         emit NewPendingAdmin(pendingAdmin);
@@ -321,7 +324,7 @@ contract Timelock {
     }
 
     //Added function to disable a minter with 0 delay in the event of an emergency
-    function disableMinter(address minter, address target) public {
+    function disableMinter(address minter, address target) public nonReentrant {
         require(msg.sender == admin, "Timelock::disableMinter: Call must come from admin.");
 
         IMinter(minter).setMinter(target, false);
