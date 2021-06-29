@@ -16,9 +16,9 @@ contract Minter is Ownable {
     /* ========== STATE VARIABLES ========== */
 
     mapping(address => bool) private _minters;
-    address calculator;
-    address feeDistribution;
-    address dev;
+    address public calculator;
+    address public feeDistribution;
+    address public dev;
     
     uint256 public addyPerProfitEth = 500; //500 ADDY per ETH = $4-5 per ADDY, similar to price of BUNNY during presale
 
