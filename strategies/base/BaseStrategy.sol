@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../../interfaces/IJar.sol";
 import "../../interfaces/IStrategy.sol";
 import "../../interfaces/uniswap/IUniswapV2Pair.sol";
 import "../../interfaces/uniswap/IUniswapRouterV2.sol";
@@ -121,31 +120,36 @@ abstract contract BaseStrategy is IStrategy, Ownable, ReentrancyGuard {
     function harvest() public override virtual;
 
     // **** Internal functions ****
-    function _swapUniswap(
-        address _from,
-        address _to,
+
+    //Performs a swap through the current router, assuming infinite approval for the token was already given
+    function _swapUniswapWithPathPreapproved(
+        address[] memory path,
         uint256 _amount
     ) internal {
-        require(_to != address(0));
-
-        // Swap with uniswap
-        IERC20(_from).safeApprove(currentRouter, 0);
-        IERC20(_from).safeApprove(currentRouter, _amount);
-
-        address[] memory path;
-
-        if (_from == weth || _to == weth) {
-            path = new address[](2);
-            path[0] = _from;
-            path[1] = _to;
-        } else {
-            path = new address[](3);
-            path[0] = _from;
-            path[1] = weth;
-            path[2] = _to;
-        }
+        require(path[1] != address(0));
 
         IUniswapRouterV2(currentRouter).swapExactTokensForTokens(
+            _amount,
+            0,
+            path,
+            address(this),
+            now.add(60)
+        );
+    }
+
+    //Legacy swap functions left in to not break compatibility with older strategy contracts
+    function _swapUniswapWithPath(
+        address[] memory path,
+        uint256 _amount,
+        address _router
+    ) internal {
+        require(path[1] != address(0));
+
+        // Swap with uniswap
+        IERC20(path[0]).safeApprove(_router, 0);
+        IERC20(path[0]).safeApprove(_router, _amount);
+
+        IUniswapRouterV2(_router).swapExactTokensForTokens(
             _amount,
             0,
             path,
@@ -158,13 +162,21 @@ abstract contract BaseStrategy is IStrategy, Ownable, ReentrancyGuard {
         address[] memory path,
         uint256 _amount
     ) internal {
+        _swapUniswapWithPath(path, _amount, currentRouter);
+    }
+
+    function _swapUniswapWithPathForFeeOnTransferTokens(
+        address[] memory path,
+        uint256 _amount,
+        address _router
+    ) internal {
         require(path[1] != address(0));
 
         // Swap with uniswap
-        IERC20(path[0]).safeApprove(currentRouter, 0);
-        IERC20(path[0]).safeApprove(currentRouter, _amount);
+        IERC20(path[0]).safeApprove(_router, 0);
+        IERC20(path[0]).safeApprove(_router, _amount);
 
-        IUniswapRouterV2(currentRouter).swapExactTokensForTokens(
+        IUniswapRouterV2(_router).swapExactTokensForTokensSupportingFeeOnTransferTokens(
             _amount,
             0,
             path,
@@ -177,19 +189,7 @@ abstract contract BaseStrategy is IStrategy, Ownable, ReentrancyGuard {
         address[] memory path,
         uint256 _amount
     ) internal {
-        require(path[1] != address(0));
-
-        // Swap with uniswap
-        IERC20(path[0]).safeApprove(currentRouter, 0);
-        IERC20(path[0]).safeApprove(currentRouter, _amount);
-
-        IUniswapRouterV2(currentRouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            _amount,
-            0,
-            path,
-            address(this),
-            now.add(60)
-        );
+        _swapUniswapWithPathForFeeOnTransferTokens(path, _amount, currentRouter);
     }
 
     function _distributePerformanceFeesAndDeposit() internal {
