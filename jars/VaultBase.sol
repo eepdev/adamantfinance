@@ -278,7 +278,7 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
     }
 
     function setWithdrawPenalty(uint256 _withdrawPenalty) public override onlyOwner {
-        require(_withdrawPenalty <= 500, "penalty too high");
+        require(_withdrawPenalty <= 50, "penalty too high");
         withdrawPenalty = _withdrawPenalty;
     }
 
