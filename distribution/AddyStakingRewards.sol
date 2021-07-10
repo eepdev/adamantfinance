@@ -14,17 +14,13 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import './TransferHelper.sol';
-import "./StringHelpers.sol";
-import "./Pausable.sol";
+import "../lib/TransferHelper.sol";
+import "../lib/StringHelpers.sol";
+import "../lib/Pausable.sol";
 
 import "../interfaces/IMinter.sol";
 
 // Inheritance
-
-interface IMigrator {
-    function migrate(uint256 _amount) external;
-}
 
 interface IStakingRewards {
     // Views
@@ -89,7 +85,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored = 0;
 
-    address public migrator;
     address public minter;
     address public externalStakingRewards; //The Quickswap/Sushi staking rewards we're staking in (or a wrapper contract for it)
 
@@ -340,52 +335,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
             emit RewardPaid(msg.sender, reward);
         }
     }
-    
-    //Transfers a locked stake belonging to the user to the migration logic contract and executes arbitrary migration logic (i.e. to a new locked staking reward contract)
-    //Ownership of this contract should be renounced after the migrator is set, so users can trust that the migration contract won't be changed
-    //Forfeits all pending rewards (since minter privileges may have been revoked from this contract)
-    //Not like Pancake's, etc's migrate function, the user needs to manually call it, for end users reading this who don't know what "msg.sender" means
-    function migrateLockedStake(bytes32 kek_id) external nonReentrant {
-        require(migrator != address(0), "No migrator set");
-        
-        LockedStake memory thisStake;
-        thisStake.amount = 0;
-        uint theIndex;
-        for (uint i = 0; i < lockedStakes[msg.sender].length; i++){ 
-            if (kek_id == lockedStakes[msg.sender][i].kek_id){
-                thisStake = lockedStakes[msg.sender][i];
-                theIndex = i;
-                break;
-            }
-        }
-        require(thisStake.kek_id == kek_id, "Stake not found");
-
-        rewards[msg.sender] = 0;
-        uint256 theAmount = thisStake.amount;
-        uint256 boostedAmount = theAmount.mul(thisStake.multiplier).div(PRICE_PRECISION);
-        if (theAmount > 0){
-            // Staking token balance and boosted balance
-            _locked_balances[msg.sender] = _locked_balances[msg.sender].sub(theAmount);
-            _boosted_balances[msg.sender] = _boosted_balances[msg.sender].sub(boostedAmount);
-
-            // Staking token supply and boosted supply
-            _staking_token_supply = _staking_token_supply.sub(theAmount);
-            _staking_token_boosted_supply = _staking_token_boosted_supply.sub(boostedAmount);
-
-            // Remove the stake from the array
-            delete lockedStakes[msg.sender][theIndex];
-
-            //Withdraw the tokens from the external staking rewards contract
-            withdrawFromExternalStakingRewards(theAmount);
-
-            // Approve tokens and execute arbitrary migration logic
-            stakingToken.safeApprove(migrator, 0);
-            stakingToken.safeApprove(migrator, theAmount);
-            IMigrator(migrator).migrate(theAmount); //will fail if migrator is null
-
-            emit WithdrawnLocked(msg.sender, theAmount, kek_id);
-        }
-    }
 
     function depositToExternalStakingRewards(uint256 amount) internal {
         ERC20(stakingToken).safeApprove(externalStakingRewards, 0);
@@ -467,10 +416,6 @@ contract AddyStakingRewards is Ownable, IStakingRewards, RewardsDistributionReci
 
     function unlockStakes() external onlyOwner {
         unlockedStakes = !unlockedStakes;
-    }
-
-    function setMigrator(address _address) external onlyOwner {
-        migrator = _address;
     }
 
     /* ========== MODIFIERS ========== */
