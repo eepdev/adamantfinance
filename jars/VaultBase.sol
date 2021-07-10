@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../interfaces/governance/IBoostHandler.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IMinter.sol";
 import "../interfaces/IVault.sol";
@@ -19,7 +20,7 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
     // Info of each user
     struct UserInfo {
         uint256 shares; // User shares
-        uint256 rewardDebt; // Reward debt (in terms of QUICK)
+        uint256 rewardDebt; // Reward debt (in terms of WMATIC)
         uint256 lastDepositTime;
         uint256 tokensStaked; // Number of tokens staked, only used to calculate profit on the frontend (different than shares)
     }
@@ -30,6 +31,7 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
 
     // Info of each user
     mapping (address => UserInfo) public userInfo;
+    mapping(address => bool) public blacklist;
 
     // The total amount of pending rewards available for stakers to claim
     uint256 public override totalPendingReward;
@@ -51,11 +53,13 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
     uint256 private rewardMultiplier = 1000;
     uint256 private constant MULTIPLIER_BASE = 1000;
     uint256 private constant MULTIPLIER_MAX = 10000;
+    uint256 private constant BOOST_BASE = 10000;
 
     IERC20 public override token;
     address public override strategy;
     IMinter internal minter;
     address public ercFund;
+    address public boostHandler;
 
     constructor(IStrategy _strategy, address _minter, address _ercFund)
         public
@@ -76,6 +80,21 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
 
     function applyRewardMultiplier(uint256 _amount) internal view returns (uint256) {
         return _amount.mul(rewardMultiplier).div(MULTIPLIER_BASE);
+    }
+
+    function getBoost(address _user) public view returns (uint256) {
+        if (boostHandler != address(0)) {
+            return IBoostHandler(boostHandler).getBoost(_user, address(this));
+        }
+        return 0;
+    }
+
+    //Returns base amount + amount from boost
+    function applyBoost(address _user, uint256 _amount) internal view returns (uint256) {
+        if (boostHandler != address(0)) {
+            return _amount.add(_amount.mul(getBoost(_user)).div(BOOST_BASE));
+        }
+        return _amount;
     }
 
     function getRatio() public override view returns (uint256) {
@@ -113,6 +132,7 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
 
     function deposit(uint256 _amount) public override nonReentrant {
         require(msg.sender == tx.origin, "no contracts");
+        require(blacklist[msg.sender] == false, "address has been blacklisted");
         _claimReward(msg.sender);
 
         uint256 _pool = balance();
@@ -187,7 +207,8 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
         emit Withdrawn(msg.sender, r);
     }
 
-    // Withdraw all tokens without caring about rewards. EMERGENCY ONLY.
+    // Withdraw all tokens without caring about rewards in the event that the reward mechanism breaks. 
+    // Normal early withdrawal penalties will apply.
     function emergencyWithdraw() public nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
         uint256 _shares = user.shares;
@@ -246,6 +267,12 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
         require(newMinter != address(0));
         minter = IMinter(newMinter);
     }
+    
+    //Sets a new boost handler
+    //Set boost handler to the zero address in order to disable it
+    function setBoostHandler(address _handler) public onlyOwner {
+        boostHandler = _handler;
+    }
 
     function setWithdrawPenaltyTime(uint256 _withdrawPenaltyTime) public override onlyOwner {
         require(_withdrawPenaltyTime <= 30 days, "delay too high");
@@ -272,6 +299,10 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
     function increaseRewardAllocation(uint256 _newReward) public override onlyOwner {
         rewardAllocation = rewardAllocation.add(_newReward);
         emit RewardAllocated(_newReward, rewardAllocation);
+    }
+
+    function blacklistAddress(address _address, bool _blacklisted) public onlyOwner {
+        blacklist[_address] = _blacklisted;
     }
 
     /* ========== EVENTS ========== */

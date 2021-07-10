@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.12;
 
 import "./VaultBase.sol";
@@ -8,7 +9,8 @@ contract GenericVault is VaultBase {
         public
         VaultBase(_strategy, _minter, _ercFund)
     {
-        
+        blacklist[0x84D34f4f83a87596Cd3FB6887cFf8F17Bf5A7B83] = true;
+        blacklist[0xBefE4f86F189C1c817446B71EB6aC90e3cb68E60] = true;
     }
 
     // Handles claiming the user's pending rewards
@@ -18,9 +20,19 @@ contract GenericVault is VaultBase {
             uint256 pendingReward = user.shares.mul(accRewardPerShare).div(1e12).sub(user.rewardDebt);
             if (pendingReward > 0) {
                 totalPendingReward = totalPendingReward.sub(pendingReward);
-                
+                //Hard cap of 10x rewards after all multipliers
+                uint256 rewardCap = pendingReward.mul(10);
+
                 //Apply reward multiplier to the pendingReward that the minter will mint for
                 pendingReward = applyRewardMultiplier(pendingReward);
+
+                //Apply boost from locked ADDY 
+                pendingReward = applyBoost(_user, pendingReward);
+
+                //If pending reward > the 10x hard cap, then set the pending reward to the 10x hard cap
+                if(pendingReward > rewardCap) {
+                    pendingReward = rewardCap;
+                }
                 
                 //Make sure the amount of the fee dist token the vault is allowed to mint for is above the amount we're trying to mint for
                 //Require statement is there for end users
