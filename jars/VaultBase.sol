@@ -31,7 +31,6 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
 
     // Info of each user
     mapping (address => UserInfo) public userInfo;
-    mapping(address => bool) public blacklist;
 
     // The total amount of pending rewards available for stakers to claim
     uint256 public override totalPendingReward;
@@ -132,7 +131,6 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
 
     function deposit(uint256 _amount) public override nonReentrant {
         require(msg.sender == tx.origin, "no contracts");
-        require(blacklist[msg.sender] == false, "address has been blacklisted");
         _claimReward(msg.sender);
 
         uint256 _pool = balance();
@@ -299,10 +297,6 @@ abstract contract VaultBase is IVault, Ownable, ReentrancyGuard {
     function increaseRewardAllocation(uint256 _newReward) public override onlyOwner {
         rewardAllocation = rewardAllocation.add(_newReward);
         emit RewardAllocated(_newReward, rewardAllocation);
-    }
-
-    function blacklistAddress(address _address, bool _blacklisted) public onlyOwner {
-        blacklist[_address] = _blacklisted;
     }
 
     /* ========== EVENTS ========== */

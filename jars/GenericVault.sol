@@ -9,8 +9,7 @@ contract GenericVault is VaultBase {
         public
         VaultBase(_strategy, _minter, _ercFund)
     {
-        blacklist[0x84D34f4f83a87596Cd3FB6887cFf8F17Bf5A7B83] = true;
-        blacklist[0xBefE4f86F189C1c817446B71EB6aC90e3cb68E60] = true;
+        
     }
 
     // Handles claiming the user's pending rewards
